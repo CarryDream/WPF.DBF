@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Movavi Video Converter.ico</ApplicationIcon>
+    <PackageIcon>Movavi Video Converter.ico</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Movavi Video Converter.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="C:\Users\Jacob\Pictures\素材\Movavi Video Converter.ico">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.102.0" />
+    <PackageReference Include="Markdig" Version="0.31.0" />
+    <PackageReference Include="SocialExplorer.FastDBF" Version="1.0.0" />
+    <PackageReference Include="System.Collections.NonGeneric" Version="4.3.0" />
+    <PackageReference Include="System.Data.OleDb" Version="8.0.0-preview.5.23280.8" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0-preview.5.23280.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Resources\md\Introduce.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
