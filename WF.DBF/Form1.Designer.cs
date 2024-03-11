@@ -407,12 +407,15 @@
             // 
             // txtDBFFilePath
             // 
+            txtDBFFilePath.AllowDrop = true;
             txtDBFFilePath.Dock = DockStyle.Fill;
             txtDBFFilePath.Location = new Point(67, 3);
             txtDBFFilePath.Name = "txtDBFFilePath";
             txtDBFFilePath.PlaceholderText = "请选择要读取的DBF文件绝对路径";
             txtDBFFilePath.Size = new Size(765, 23);
             txtDBFFilePath.TabIndex = 1;
+            txtDBFFilePath.DragDrop += txtDBFFilePath_DragDrop;
+            txtDBFFilePath.DragEnter += txtDBFFilePath_DragEnter;
             // 
             // btnChooseDBFFile
             // 
@@ -692,12 +695,15 @@
             // 
             // txtExcelFilePath
             // 
+            txtExcelFilePath.AllowDrop = true;
             txtExcelFilePath.Dock = DockStyle.Fill;
             txtExcelFilePath.Location = new Point(67, 3);
             txtExcelFilePath.Name = "txtExcelFilePath";
             txtExcelFilePath.PlaceholderText = "请选择要读取的Excel文件绝对路径";
             txtExcelFilePath.Size = new Size(765, 23);
             txtExcelFilePath.TabIndex = 1;
+            txtExcelFilePath.DragDrop += txtExcelFilePath_DragDrop;
+            txtExcelFilePath.DragEnter += txtExcelFilePath_DragEnter;
             // 
             // btnChooseExcelFile
             // 

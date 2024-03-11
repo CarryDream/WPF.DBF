@@ -1,9 +1,6 @@
 using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Markdig;
 using SocialExplorer.IO.FastDBF;
-using System.Collections;
 using System.ComponentModel;
 using System.Data;
 using System.Text;
@@ -469,10 +466,27 @@ namespace WF.DBF
             List<string> excelHeader = new List<string>();
             foreach (DataColumn dc in excelDataTable.Columns)
             {
+                // 此处根据字段名称设置默认字段长度
+                int length = 2;
+                string columnName = dc.ColumnName.ToLower();
+                // 根据字段名称设置字段默认长度
+                if (columnName.Equals("ksh") || columnName.Equals("bmh") || columnName.Equals("gkbmh"))
+                    length = 14;
+                else if (columnName.Equals("zjh") || columnName.Equals("sfzh") || columnName.Equals("idno"))
+                    length = 20;
+                else if (columnName.Equals("xm") || columnName.Equals("name") || columnName.Equals("ksxm"))
+                    length = 40;
+                else if (columnName.Equals("yxdh"))
+                    length = 3;
+                else if (columnName.Equals("zyzdh"))
+                    length = 2;
+                else if (columnName.Equals("zydh"))
+                    length = 2;
+
                 excelDgv.Add(new DataGridViewDBFField(
                     dc.ColumnName,
                     "System.String",
-                    5,
+                    length,
                     false
                 ));
                 excelHeader.Add(dc.ColumnName);
@@ -878,6 +892,34 @@ namespace WF.DBF
         {
             DBFTableHeadSplitForm tableHeadSplitForm = new DBFTableHeadSplitForm();
             tableHeadSplitForm.ShowDialog();
+        }
+
+        private void txtDBFFilePath_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Link;
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
+        private void txtDBFFilePath_DragDrop(object sender, DragEventArgs e)
+        {
+            string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
+            txtDBFFilePath.Text = path;
+        }
+
+        private void txtExcelFilePath_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Link;
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
+        private void txtExcelFilePath_DragDrop(object sender, DragEventArgs e)
+        {
+            string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
+            txtExcelFilePath.Text = path;
         }
     }
 }
