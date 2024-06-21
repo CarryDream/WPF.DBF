@@ -89,6 +89,8 @@
             btnChooseExcelFile = new Button();
             label2 = new Label();
             tabPage3 = new TabPage();
+            txtClipboardText = new TextBox();
+            btnReadClipboard = new Button();
             tabPage4 = new TabPage();
             btnBatchSplitDBFHeader = new Button();
             tabPage5 = new TabPage();
@@ -111,6 +113,7 @@
             groupBox4.SuspendLayout();
             tableLayoutPanel6.SuspendLayout();
             tableLayoutPanel5.SuspendLayout();
+            tabPage3.SuspendLayout();
             tabPage4.SuspendLayout();
             tabPage5.SuspendLayout();
             SuspendLayout();
@@ -726,6 +729,8 @@
             // 
             // tabPage3
             // 
+            tabPage3.Controls.Add(txtClipboardText);
+            tabPage3.Controls.Add(btnReadClipboard);
             tabPage3.Location = new Point(4, 26);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new Padding(3);
@@ -733,6 +738,24 @@
             tabPage3.TabIndex = 2;
             tabPage3.Text = "读取剪切板";
             tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // txtClipboardText
+            // 
+            txtClipboardText.Location = new Point(49, 96);
+            txtClipboardText.Multiline = true;
+            txtClipboardText.Name = "txtClipboardText";
+            txtClipboardText.Size = new Size(526, 227);
+            txtClipboardText.TabIndex = 1;
+            // 
+            // btnReadClipboard
+            // 
+            btnReadClipboard.Location = new Point(18, 15);
+            btnReadClipboard.Name = "btnReadClipboard";
+            btnReadClipboard.Size = new Size(75, 23);
+            btnReadClipboard.TabIndex = 0;
+            btnReadClipboard.Text = "button1";
+            btnReadClipboard.UseVisualStyleBackColor = true;
+            btnReadClipboard.Click += btnReadClipboard_Click;
             // 
             // tabPage4
             // 
@@ -827,6 +850,8 @@
             tableLayoutPanel6.ResumeLayout(false);
             tableLayoutPanel5.ResumeLayout(false);
             tableLayoutPanel5.PerformLayout();
+            tabPage3.ResumeLayout(false);
+            tabPage3.PerformLayout();
             tabPage4.ResumeLayout(false);
             tabPage5.ResumeLayout(false);
             ResumeLayout(false);
@@ -908,5 +933,7 @@
         private TabPage tabPage5;
         private TableLayoutPanel tableLayoutPanel8;
         private Button btnBatchSplitDBFHeader;
+        private Button btnReadClipboard;
+        private TextBox txtClipboardText;
     }
 }

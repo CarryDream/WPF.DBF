@@ -4,6 +4,8 @@ using SocialExplorer.IO.FastDBF;
 using System.ComponentModel;
 using System.Data;
 using System.Text;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using WF.DBF.Entity;
 using WF.DBF.Utils;
 using static WF.DBF.Utils.DBFUtil;
@@ -538,6 +540,21 @@ namespace WF.DBF
                             eName = "KSXM";
                             this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "30";
                         }
+                        else if (eName.StartsWith("院校代号") || eName.StartsWith("院校编码") || eName.ToUpper() == "YXDH" || eName.ToUpper() == "YXBM")
+                        {
+                            eName = "YXDH";
+                            this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "3";
+                        }
+                        else if (eName.StartsWith("专业组代号") || eName.StartsWith("专业组代码") || eName.ToUpper() == "ZYZDH" || eName.ToUpper() == "ZYZDM")
+                        {
+                            eName = "ZYZDH";
+                            this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "2";
+                        }
+                        else if (eName.StartsWith("专业代号") || eName.StartsWith("专业编码") || eName.ToUpper() == "ZYDH" || eName.ToUpper() == "ZYBM")
+                        {
+                            eName = "ZYDH";
+                            this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "30";
+                        }
 
                         this.dataGridView2.Rows[e.RowIndex].Cells["enName"].Value = eName;
                     }
@@ -920,6 +937,32 @@ namespace WF.DBF
         {
             string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
             txtExcelFilePath.Text = path;
+        }
+
+        private void btnReadClipboard_Click(object sender, EventArgs e)
+        {
+            IDataObject dataObject = Clipboard.GetDataObject();
+            bool hasExcel = dataObject != null && (dataObject.GetDataPresent(DataFormats.CommaSeparatedValue) || dataObject.GetDataPresent(DataFormats.Text));
+            string excelText = hasExcel ? "是" : "否";
+
+            List<List<string>> data = new List<List<string>>();
+            if (hasExcel)
+            {
+                string[] lines = Clipboard.GetText().Split('\n');
+                foreach (string line in lines)
+                {
+                    List<string> row = new List<string>();
+                    string[] cells = line.Split('\t');
+                    foreach (string cell in cells)
+                    {
+                        row.Add(cell);
+                    }
+                    data.Add(row);
+                }
+            }
+
+            txtClipboardText.Text = "是否存在Excel内容: " + excelText + Newtonsoft.Json.JsonConvert.SerializeObject(data);
+
         }
     }
 }
