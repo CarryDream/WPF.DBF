@@ -708,19 +708,24 @@ namespace WF.DBF.Utils
 
                 try
                 {
-                    this._dbfHeader.Version = this._binaryReader.ReadSByte();         //第1字节
-                    this._dbfHeader.LastModifyYear = this._binaryReader.ReadByte();   //第2字节
-                    this._dbfHeader.LastModifyMonth = this._binaryReader.ReadByte();  //第3字节
-                    this._dbfHeader.LastModifyDay = this._binaryReader.ReadByte();    //第4字节
-                    this._dbfHeader.RecordCount = this._binaryReader.ReadInt32();     //第5-8字节
-                    this._dbfHeader.HeaderLength = this._binaryReader.ReadUInt16();   //第9-10字节
-                    this._dbfHeader.RecordLength = this._binaryReader.ReadUInt16();   //第11-12字节
-                    this._dbfHeader.Reserved = this._binaryReader.ReadBytes(16);      //第13-14字节
-                    this._dbfHeader.TableFlag = this._binaryReader.ReadSByte();       //第15字节
-                    this._dbfHeader.CodePageFlag = this._binaryReader.ReadSByte();    //第16字节
-                    this._dbfHeader.Reserved2 = this._binaryReader.ReadBytes(2);      //第17-18字节
+                    this._dbfHeader.Version = this._binaryReader.ReadSByte();
+                    this._dbfHeader.LastModifyYear = this._binaryReader.ReadByte();
+                    this._dbfHeader.LastModifyMonth = this._binaryReader.ReadByte();
+                    this._dbfHeader.LastModifyDay = this._binaryReader.ReadByte();
+                    this._dbfHeader.RecordCount = this._binaryReader.ReadInt32();
+                    this._dbfHeader.HeaderLength = this._binaryReader.ReadUInt16();
+                    this._dbfHeader.RecordLength = this._binaryReader.ReadUInt16();
+                    this._dbfHeader.Reserved = this._binaryReader.ReadBytes(16);
+                    this._dbfHeader.TableFlag = this._binaryReader.ReadSByte();
+                    this._dbfHeader.CodePageFlag = this._binaryReader.ReadSByte();
+                    this._dbfHeader.Reserved2 = this._binaryReader.ReadBytes(2);
 
                     this._fieldCount = GetFieldCount();
+
+                    System.Diagnostics.Debug.WriteLine($"RecordLength: {this._dbfHeader.RecordLength}");
+                    System.Diagnostics.Debug.WriteLine($"HeaderLength: {this._dbfHeader.HeaderLength}");
+                    System.Diagnostics.Debug.WriteLine($"RecordCount: {this._dbfHeader.RecordCount}");
+                    System.Diagnostics.Debug.WriteLine($"FieldCount: {this._fieldCount}");
                 }
                 catch
                 {
@@ -735,18 +740,25 @@ namespace WF.DBF.Utils
                 // 否则从此处开始不再存在字段信息
                 int fCount = (this._dbfHeader.HeaderLength - TDbfHeader.HeaderSize - 1) / TDbfField.FieldSize;
 
+                int actualCount = 0;
                 for (int k = 0; k < fCount; k++)
                 {
-                    _fileStream.Seek(TDbfHeader.HeaderSize + k * TDbfField.FieldSize, SeekOrigin.Begin);  // 定位到每个字段结构区，获取第一个字节的值
+                    _fileStream.Seek(TDbfHeader.HeaderSize + k * TDbfField.FieldSize, SeekOrigin.Begin);
                     byte flag = this._binaryReader.ReadByte();
 
-                    if (flag == 0x0D)  // 如果获取到的标志不为0x0D，则表示该字段存在；否则从此处开始后面再没有字段信息
+                    if (flag != 0x0D)  // 如果不是0x0D，表示字段存在
                     {
-                        return k;
+                        actualCount++;
+                    }
+                    else
+                    {
+                        break;
                     }
                 }
 
-                return fCount;
+                System.Diagnostics.Debug.WriteLine($"Actual FieldCount: {actualCount}");
+
+                return actualCount;
             }
 
             private void ReadFields()
@@ -782,9 +794,11 @@ namespace WF.DBF.Utils
             {
                 this._recordBuffer = new byte[this._dbfHeader.RecordLength];
 
+                System.Diagnostics.Debug.WriteLine($"Allocating RecordBuffer of length: {this._dbfHeader.RecordLength}");
+
                 if (this._recordBuffer == null)
                 {
-                    throw new Exception("fail to allocate memory .");
+                    throw new Exception("fail to allocate memory.");
                 }
             }
 
@@ -821,37 +835,59 @@ namespace WF.DBF.Utils
             public void GetDbfRecords()
             {
                 try
-                {
-                    this._fileStream.Seek(this._dbfHeader.HeaderLength, SeekOrigin.Begin);
+    {
+        this._fileStream.Seek(this._dbfHeader.HeaderLength, SeekOrigin.Begin);
 
-                    for (int k = 0; k < this.RecordCount; k++)
-                    {
-                        if (ReadRecordBuffer(k) != DeletedFlag)
-                        {
-                            System.Data.DataRow row = _dbfTable.NewRow();
-                            for (int i = 0; i < this._fieldCount; i++)
-                            {
-                                row[i] = this.GetFieldValue(i);
-                            }
-                            _dbfTable.Rows.Add(row);
-                        }
-                    }
-                }
-                catch (ArgumentOutOfRangeException e)
+        for (int k = 0; k < this.RecordCount; k++)
+        {
+            if (ReadRecordBuffer(k) != DeletedFlag)
+            {
+                System.Data.DataRow row = _dbfTable.NewRow();
+                for (int i = 0; i < this._fieldCount; i++)
                 {
-                    throw e;
+                    row[i] = this.GetFieldValue(i);
                 }
-                catch
-                {
-                    throw new Exception("fail to get dbf table.");
-                }
+                _dbfTable.Rows.Add(row);
+            }
+        }
+    }
+    catch (ArgumentOutOfRangeException e)
+    {
+        throw new Exception("参数超出范围。", e);
+    }
+    catch (Exception ex)
+    {
+        throw new Exception("获取 DBF 表时失败。", ex);
+    }
             }
 
             private byte ReadRecordBuffer(int recordIndex)
             {
-                byte deleteFlag = this._binaryReader.ReadByte();  // 删除标志
-                this._recordBuffer = this._binaryReader.ReadBytes(this._dbfHeader.RecordLength - 1);  // 标志位已经读取
-                return deleteFlag;
+                try
+                {
+                    byte deleteFlag = this._binaryReader.ReadByte();  // 删除标志
+                    int bytesToRead = this._dbfHeader.RecordLength - 1;
+
+                    System.Diagnostics.Debug.WriteLine($"读取记录 {recordIndex}，需要读取的字节数：{bytesToRead}");
+
+                    if (bytesToRead <= 0)
+                    {
+                        throw new Exception($"记录长度无效（RecordLength: {this._dbfHeader.RecordLength}），无法读取数据。");
+                    }
+
+                    this._recordBuffer = this._binaryReader.ReadBytes(bytesToRead);  // 读取记录数据
+
+                    if (this._recordBuffer.Length != bytesToRead)
+                    {
+                        throw new Exception($"实际读取字节数与预期不符：预期 {bytesToRead}，实际 {this._recordBuffer.Length}。");
+                    }
+
+                    return deleteFlag;
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"读取记录缓冲区时发生错误：{ex.Message}", ex);
+                }
             }
 
             private string GetFieldValue(int fieldIndex)
@@ -864,7 +900,14 @@ namespace WF.DBF.Utils
                     offset += _dbfFields[i].Length;
                 }
 
+                // 确保 offset 和 Length 合法
+                if (offset < 0 || offset + _dbfFields[fieldIndex].Length > this._recordBuffer.Length)
+                {
+                    throw new ArgumentOutOfRangeException($"Field index {fieldIndex} has invalid offset or length.");
+                }
+
                 byte[] tmp = CopySubBytes(this._recordBuffer, offset, this._dbfFields[fieldIndex].Length);
+
 
                 if (this._dbfFields[fieldIndex].IsInt == true)
                 {
