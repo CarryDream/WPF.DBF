@@ -6,6 +6,7 @@ using System.Data.OleDb;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WF.DBF.Utils
@@ -112,8 +113,8 @@ namespace WF.DBF.Utils
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        public static DataTable DBFToDataTable(string fileName) { 
-        
+        public static DataTable DBFToDataTable(string fileName) {
+
             // 获取文件编码
             Encoding encoding = GetDBFFileEncoding(fileName);
             // 返回的结果集
@@ -129,25 +130,134 @@ namespace WF.DBF.Utils
                 dt.Columns.Add(dh[index].Name);
             }
 
-            // 加载数据到 DataTable 里
-            int i = 0;
-            while (dbf.Read(i) != null) {
-                // 获取第一行
-                DbfRecord record = dbf.Read(i);
-                // 将该行数据放到 DataRow 里
-                DataRow dr = dt.NewRow();
-                Object[] objs = new object[record.ColumnCount];
-                for (int index = 0; index < record.ColumnCount; index++)
-                {
-                    objs[index] = record[index];
+            return ReadDbfRecords(dbf, dt);
+        }
+
+        /// <summary>
+        /// 异步从DBF读取文件到DataTable
+        /// </summary>
+        /// <param name="fileName">DBF文件路径</param>
+        /// <param name="progress">进度回调</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>DataTable对象</returns>
+        public static async Task<DataTable> DBFToDataTableAsync(string fileName, IProgress<(int current, int total, string message)> progress = null, CancellationToken cancellationToken = default)
+        {
+            // 使用FileShare.ReadWrite允许其他进程读取文件
+            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                return await Task.Run(() => {
+                    try
+                    {
+                        // 获取文件编码
+                        Encoding encoding = GetDBFFileEncoding(fileName);
+                        // 返回的结果集
+                        DataTable dt = new DataTable();
+                        dt.TableName = Path.GetFileNameWithoutExtension(fileName);
+
+                        progress?.Report((0, 100, "正在打开文件..."));
+
+                        // 获取 dbf 文件对象
+                        DbfFile dbf = new DbfFile(encoding);
+                        // 使用文件流打开DBF文件
+                        dbf.Open(fs);
+
+                        progress?.Report((10, 100, "正在读取表结构..."));
+
+                        // 创建 DataTable 的列
+                        DbfHeader dh = dbf.Header;
+                        for (int index = 0; index < dh.ColumnCount; index++)
+                        {
+                            dt.Columns.Add(dh[index].Name);
+
+                            // 检查是否取消
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
+
+                        progress?.Report((20, 100, "正在读取数据..."));
+
+                        return ReadDbfRecords(dbf, dt, progress, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 记录错误信息
+                        System.Diagnostics.Debug.WriteLine($"DBF读取错误: {ex.Message}");
+                        throw; // 重新抛出异常
+                    }
+                }, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// 读取DBF记录到DataTable
+        /// </summary>
+        private static DataTable ReadDbfRecords(DbfFile dbf, DataTable dt, IProgress<(int current, int total, string message)> progress = null, CancellationToken cancellationToken = default)
+        {
+
+            try
+            {
+                // 预读取总记录数
+                int totalRecords = 0;
+                while (dbf.Read(totalRecords) != null) {
+                    totalRecords++;
+                    // 每100条记录检查一次是否取消
+                    if (totalRecords % 100 == 0 && cancellationToken != default)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
                 }
 
-                dr.ItemArray = objs;
-                dt.Rows.Add(dr);
-                i++;
-            }
+                // 重新读取数据
+                // 加载数据到 DataTable 里
+                int i = 0;
+                int batchSize = 1000; // 批量处理大小
 
-            dbf.Close();
+                // 预分配内存以提高性能
+                dt.BeginLoadData();
+
+                while (i < totalRecords) {
+                    // 批量处理数据
+                    int endBatch = Math.Min(i + batchSize, totalRecords);
+
+                    for (int recordIndex = i; recordIndex < endBatch; recordIndex++)
+                    {
+                        // 获取记录
+                        DbfRecord record = dbf.Read(recordIndex);
+                        if (record == null) continue;
+
+                        // 将该行数据放到 DataRow 里
+                        DataRow dr = dt.NewRow();
+                        Object[] objs = new object[record.ColumnCount];
+                        for (int index = 0; index < record.ColumnCount; index++)
+                        {
+                            objs[index] = record[index];
+                        }
+
+                        dr.ItemArray = objs;
+                        dt.Rows.Add(dr);
+                    }
+
+                    i = endBatch;
+
+                    // 报告进度
+                    if (progress != null)
+                    {
+                        int progressValue = 20 + (int)((float)i / totalRecords * 80);
+                        progress.Report((progressValue, 100, $"正在读取数据... {i}/{totalRecords}"));
+                    }
+
+                    // 检查是否取消
+                    if (cancellationToken != default)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+                }
+
+                dt.EndLoadData();
+            }
+            finally
+            {
+                dbf.Close();
+            }
             return dt;
         }
 
@@ -168,7 +278,7 @@ namespace WF.DBF.Utils
             dbf.Open(fileName, FileMode.OpenOrCreate);
             // 创建 DBF 文件的结构
             dbf.Header.Unlock();
-            for (int i = 0; i < initHeader.ColumnCount; i++) 
+            for (int i = 0; i < initHeader.ColumnCount; i++)
             {
                 DbfColumn initC = initHeader[i];
                 dbf.Header.AddColumn(initC);
@@ -200,45 +310,156 @@ namespace WF.DBF.Utils
 
         public static void DataTableToDBF(string fileName, DataTable dt)
         {
-            // 如果文件存在, 需要删除文件
-            if (File.Exists(fileName))
+            DataTableToDBF(fileName, dt, null, default);
+        }
+
+        /// <summary>
+        /// 异步将DataTable导出为DBF文件
+        /// </summary>
+        /// <param name="fileName">输出文件路径</param>
+        /// <param name="dt">数据表</param>
+        /// <param name="progress">进度回调</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns></returns>
+        public static async Task DataTableToDBFAsync(string fileName, DataTable dt, IProgress<(int current, int total, string message)> progress = null, CancellationToken cancellationToken = default)
+        {
+            await Task.Run(() => DataTableToDBF(fileName, dt, progress, cancellationToken), cancellationToken);
+        }
+
+        /// <summary>
+        /// 将DataTable导出为DBF文件
+        /// </summary>
+        private static void DataTableToDBF(string fileName, DataTable dt, IProgress<(int current, int total, string message)> progress = null, CancellationToken cancellationToken = default)
+        {
+            progress?.Report((0, 100, "准备导出文件..."));
+
+            // 确保文件句柄正确释放
+            DbfFile dbf = null;
+
+            try
             {
-                File.Delete(fileName);
-            }
-
-            // 设置默认编码为 GB2312
-            Encoding encoding = GetEncoding("GB2312");
-            // 获取一个 DBF 文件对象
-            DbfFile dbf = new DbfFile(encoding);
-            dbf.Open(fileName, FileMode.Create);
-
-            // 创建 DBF 文件的结构
-            foreach (DataColumn dc in dt.Columns) {
-                dbf.Header.AddColumn(new DbfColumn(dc.ColumnName, DbfColumn.DbfColumnType.Character, 255, 0));
-            }
-
-            // 读取 DataTable 写入到 DBF 文件中
-            foreach (DataRow dr in dt.Rows)
-            {
-                // 将 DataRow 里的数据封装到 DbfRecord 里面
-                DbfRecord record = new DbfRecord(dbf.Header);
-                foreach (DataColumn dc in dt.Columns)
+                // 如果文件存在, 需要删除文件
+                if (File.Exists(fileName))
                 {
-                    try
+                    // 尝试删除文件，如果被占用则等待一会再试
+                    int retryCount = 0;
+                    bool deleted = false;
+
+                    while (!deleted && retryCount < 3)
                     {
-                        record[dc.ColumnName] = dr[dc.ColumnName].ToString();
-                    }
-                    catch
-                    {
-                        continue;
+                        try
+                        {
+                            File.Delete(fileName);
+                            deleted = true;
+                        }
+                        catch (IOException)
+                        {
+                            retryCount++;
+                            if (retryCount >= 3) throw; // 重试多次后还是失败，抛出异常
+
+                            // 等待一会再试
+                            Thread.Sleep(100);
+                        }
                     }
                 }
 
-                dbf.Write(record, true);
-            }
+                progress?.Report((10, 100, "创建文件结构..."));
 
-            // 一定要 Close 才会把数据完全写入到 DBF 文件中
-            dbf.Close();
+                // 设置默认编码为 GB2312
+                Encoding encoding = GetEncoding("GB2312");
+                // 获取一个 DBF 文件对象
+                dbf = new DbfFile(encoding);
+
+                // 使用FileShare.None确保文件不被其他进程访问
+                using (FileStream fs = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+                {
+                    dbf.Open(fs);
+
+                    // 创建 DBF 文件的结构
+                    foreach (DataColumn dc in dt.Columns) {
+                        dbf.Header.AddColumn(new DbfColumn(dc.ColumnName, DbfColumn.DbfColumnType.Character, 255, 0));
+
+                        // 检查是否取消
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    progress?.Report((20, 100, "写入数据..."));
+
+                    // 读取 DataTable 写入到 DBF 文件中
+                    int totalRows = dt.Rows.Count;
+                    int batchSize = 1000; // 批量处理大小
+
+                    for (int i = 0; i < totalRows; i += batchSize)
+                    {
+                        int endBatch = Math.Min(i + batchSize, totalRows);
+
+                        for (int rowIndex = i; rowIndex < endBatch; rowIndex++)
+                        {
+                            DataRow dr = dt.Rows[rowIndex];
+                            // 将 DataRow 里的数据封装到 DbfRecord 里面
+                            DbfRecord record = new DbfRecord(dbf.Header);
+                            foreach (DataColumn dc in dt.Columns)
+                            {
+                                try
+                                {
+                                    record[dc.ColumnName] = dr[dc.ColumnName].ToString();
+                                }
+                                catch
+                                {
+                                    continue;
+                                }
+                            }
+
+                            dbf.Write(record, true);
+                        }
+
+                        // 报告进度
+                        if (progress != null)
+                        {
+                            int progressValue = 20 + (int)((float)endBatch / totalRows * 80);
+                            progress.Report((progressValue, 100, $"写入数据... {endBatch}/{totalRows}"));
+                        }
+
+                        // 检查是否取消
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    progress?.Report((100, 100, "完成"));
+
+                    // 在关闭文件流前先关闭DBF文件
+                    dbf.Close();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 如果操作被取消，删除可能创建的不完整文件
+                if (File.Exists(fileName))
+                {
+                    try { File.Delete(fileName); } catch { }
+                }
+                throw; // 重新抛出异常
+            }
+            catch (Exception ex)
+            {
+                // 记录错误信息
+                System.Diagnostics.Debug.WriteLine($"DBF写入错误: {ex.Message}");
+
+                // 如果出错，删除可能创建的不完整文件
+                if (File.Exists(fileName))
+                {
+                    try { File.Delete(fileName); } catch { }
+                }
+
+                throw; // 重新抛出异常
+            }
+            finally
+            {
+                // 确保关闭DBF文件
+                if (dbf != null)
+                {
+                    try { dbf.Close(); } catch { }
+                }
+            }
 
         }
 
@@ -945,7 +1166,7 @@ namespace WF.DBF.Utils
                 fieldValue = fieldValue.Trim();
 
                 // 如果本字段类型是数值相关型，进一步处理字段值
-                if (this._dbfFields[fieldIndex].IsNumber == true || this._dbfFields[fieldIndex].IsFloat == true)    // N - 数值型, F - 浮点型                    
+                if (this._dbfFields[fieldIndex].IsNumber == true || this._dbfFields[fieldIndex].IsFloat == true)    // N - 数值型, F - 浮点型
                 {
                     if (fieldValue.Length == 0)
                     {
@@ -978,7 +1199,7 @@ namespace WF.DBF.Utils
                         fieldValue = "true";
                     }
                 }
-                else if (this._dbfFields[fieldIndex].IsDate == true || this._dbfFields[fieldIndex].IsTime == true)   // D - 日期型  T - 日期时间型                    
+                else if (this._dbfFields[fieldIndex].IsDate == true || this._dbfFields[fieldIndex].IsTime == true)   // D - 日期型  T - 日期时间型
                 {
                     // 暂时不做任何处理
                 }
@@ -1039,7 +1260,7 @@ namespace WF.DBF.Utils
                 {
                     byte[] tmp = CopySubBytes(buf, 0, 4);
                     tmp.Initialize();
-                    int days = System.BitConverter.ToInt32(tmp, 0);  // ( ToInt32(tmp); // 获取天数                
+                    int days = System.BitConverter.ToInt32(tmp, 0);  // ( ToInt32(tmp); // 获取天数
 
                     tmp = CopySubBytes(buf, 4, 4);  // 获取毫秒数
                     int milliSeconds = System.BitConverter.ToInt32(tmp, 0);  // ToInt32(tmp);

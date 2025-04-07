@@ -104,7 +104,7 @@ namespace WF.DBF
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void btnDBFReader_Click(object sender, EventArgs e)
+        private async void btnDBFReader_Click(object sender, EventArgs e)
         {
             string dbfFilePath = this.txtDBFFilePath.Text;
             if (dbfFilePath == "")
@@ -113,26 +113,76 @@ namespace WF.DBF
                 return;
             }
 
-            DBFUtil.TDbfTable dbfTable = new DBFUtil.TDbfTable(dbfFilePath);
-            // 表格内容赋值
-            dbfDt = dbfTable.Table;
-            // 启用按钮
-            this.btnShowContent.Enabled = true;
-            this.btnConvertExcel.Enabled = true;
-            this.btnExportExcel.Enabled = true;
-            this.btnExportDBF.Enabled = true;
+            // 禁用按钮，防止重复点击
+            this.btnDBFReader.Enabled = false;
 
-            dbfDgv.Clear();
-            TDbfField[] dbfFields = dbfTable.DbfFields;
-            int fieldCount = dbfFields.Length;
-            for (int i = 0; i < fieldCount; i++)
+            try
             {
-                dbfDgv.Add(new DataGridViewDBFField(
-                    dbfFields[i].GetFieldName(dbfTable.Encoding),
-                    dbfFields[i].FieldType.ToString(),
-                    dbfFields[i].Length,
-                    false
-                ));
+                // 创建进度条窗体
+                using (var progressForm = new ProgressForm())
+                {
+                    // 创建进度报告对象
+                    var progress = new Progress<(int current, int total, string message)>(report =>
+                    {
+                        progressForm.SetProgress(report.current, report.total);
+                        progressForm.SetStatus(report.message);
+                    });
+
+                    // 异步显示进度条
+                    var progressTask = Task.Run(() => progressForm.ShowDialog());
+
+                    try
+                    {
+                        // 异步读取DBF文件
+                        dbfDt = await DBFUtil.DBFToDataTableAsync(dbfFilePath, progress, progressForm.CancellationToken);
+
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        // 启用按钮
+                        this.btnShowContent.Enabled = true;
+                        this.btnConvertExcel.Enabled = true;
+                        this.btnExportExcel.Enabled = true;
+                        this.btnExportDBF.Enabled = true;
+
+                        // 清空并重新填充表头信息
+                        dbfDgv.Clear();
+
+                        // 从 DataTable 中提取列信息
+                        foreach (DataColumn column in dbfDt.Columns)
+                        {
+                            // 判断列类型和长度
+                            string columnType = "System.String";
+                            int columnLength = 255; // 默认长度
+
+                            dbfDgv.Add(new DataGridViewDBFField(
+                                column.ColumnName,
+                                columnType,
+                                columnLength,
+                                false
+                            ));
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // 用户取消了操作
+                        MessageBox.Show("操作已取消");
+                    }
+                    catch (Exception ex)
+                    {
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        MessageBox.Show($"读取DBF文件时出错: {ex.Message}");
+                    }
+                }
+            }
+            finally
+            {
+                // 重新启用按钮
+                this.btnDBFReader.Enabled = true;
             }
 
             this.dataGridView1.AutoSize = true;
@@ -357,7 +407,7 @@ namespace WF.DBF
             }
         }
 
-        private void btnExportDBF_Click(object sender, EventArgs e)
+        private async void btnExportDBF_Click(object sender, EventArgs e)
         {
             // 1. 获取已选择的表头信息
             int cnt = dbfDgv.Count;
@@ -390,41 +440,87 @@ namespace WF.DBF
                 var filename = saveFileDialog.FileName;
                 this.dbfSavePath = Path.GetDirectoryName(filename);
 
-                // 3. 获取DBF文件内容信息
-                int rows = dbfDt.Rows.Count;
-                int columns = dbfDt.Columns.Count;
+                // 禁用按钮，防止重复点击
+                this.btnExportDBF.Enabled = false;
 
-                // 设置默认编码为 GB2312
-                Encoding encoding = DBFUtil.GetEncoding("GB2312");
-                DbfFile dbf = new DbfFile(encoding);
-                dbf.Open(filename, FileMode.Create);
-                foreach (DataGridViewDBFField field in fields)
+                try
                 {
-                    dbf.Header.AddColumn(new DbfColumn(field.NName, DbfColumn.DbfColumnType.Character, field.NLength, 0));
-                }
-
-                // 4. 封装成新的对象
-                for (int i = 0; i < rows; i++)
-                {
-                    DbfRecord record = new DbfRecord(dbf.Header);
-                    for (int j = 0; j < fields.Count; j++)
+                    // 创建进度条窗体
+                    using (var progressForm = new ProgressForm())
                     {
-                        if (String.IsNullOrEmpty(fields[j].NDefaultValue))
+                        // 创建进度报告对象
+                        var progress = new Progress<(int current, int total, string message)>(report =>
                         {
-                            record[fields[j].NName] = dbfDt.Rows[i][fields[j].OName].ToString();
+                            progressForm.SetProgress(report.current, report.total);
+                            progressForm.SetStatus(report.message);
+                        });
+
+                        // 异步显示进度条
+                        var progressTask = Task.Run(() => progressForm.ShowDialog());
+
+                        try
+                        {
+                            // 3. 获取DBF文件内容信息
+                            int rows = dbfDt.Rows.Count;
+                            int columns = dbfDt.Columns.Count;
+
+                            // 创建要导出的数据表
+                            DataTable exportTable = new DataTable();
+                            exportTable.TableName = dbfDt.TableName + "_new";
+
+                            // 添加列
+                            foreach (DataGridViewDBFField field in fields)
+                            {
+                                exportTable.Columns.Add(field.NName);
+                            }
+
+                            // 添加数据
+                            for (int i = 0; i < rows; i++)
+                            {
+                                DataRow dr = exportTable.NewRow();
+                                for (int j = 0; j < fields.Count; j++)
+                                {
+                                    if (String.IsNullOrEmpty(fields[j].NDefaultValue))
+                                    {
+                                        dr[fields[j].NName] = dbfDt.Rows[i][fields[j].OName].ToString();
+                                    }
+                                    else
+                                    {
+                                        dr[fields[j].NName] = fields[j].NDefaultValue;
+                                    }
+                                }
+                                exportTable.Rows.Add(dr);
+                            }
+
+                            // 异步导出为DBF文件
+                            await DBFUtil.DataTableToDBFAsync(filename, exportTable, progress, progressForm.CancellationToken);
+
+                            // 关闭进度条
+                            progressForm.Invoke(new Action(() => progressForm.Close()));
+                            await progressTask;
+
+                            MessageBox.Show("文件保存成功! 路径: " + filename);
                         }
-                        else
+                        catch (OperationCanceledException)
                         {
-                            record[fields[j].NName] = fields[j].NDefaultValue;
+                            // 用户取消了操作
+                            MessageBox.Show("操作已取消");
+                        }
+                        catch (Exception ex)
+                        {
+                            // 关闭进度条
+                            progressForm.Invoke(new Action(() => progressForm.Close()));
+                            await progressTask;
+
+                            MessageBox.Show($"导出DBF文件时出错: {ex.Message}");
                         }
                     }
-
-                    dbf.Write(record, true);
                 }
-
-                // 5. 导出DBF文件
-                dbf.Close();
-                MessageBox.Show("文件保存成功! 路径: " + filename);
+                finally
+                {
+                    // 重新启用按钮
+                    this.btnExportDBF.Enabled = true;
+                }
             }
         }
 
@@ -445,7 +541,7 @@ namespace WF.DBF
             }
         }
 
-        private void btnExcelReader_Click(object sender, EventArgs e)
+        private async void btnExcelReader_Click(object sender, EventArgs e)
         {
             string excelFilePath = this.txtExcelFilePath.Text;
             if (excelFilePath == "")
@@ -454,46 +550,93 @@ namespace WF.DBF
                 return;
             }
 
-            // 启用按钮
-            this.btnShowExcelContent.Enabled = true;
-            this.btnExcelConvertDBF.Enabled = true;
-            this.btnExcelToExcel.Enabled = true;
-            this.btnExcelToDBF.Enabled = true;
+            // 禁用按钮，防止重复点击
+            this.btnExcelReader.Enabled = false;
 
-            DataTable excelDataTable = ExcelUtil.readFile(excelFilePath);
-            // 获取表头
-            excelDgv.Clear();
-            List<string> excelHeader = new List<string>();
-            foreach (DataColumn dc in excelDataTable.Columns)
+            try
             {
-                // 此处根据字段名称设置默认字段长度
-                int length = 2;
-                string columnName = dc.ColumnName.ToLower();
-                // 根据字段名称设置字段默认长度
-                if (columnName.Equals("ksh") || columnName.Equals("bmh") || columnName.Equals("gkbmh"))
-                    length = 14;
-                else if (columnName.Equals("zjh") || columnName.Equals("sfzh") || columnName.Equals("idno"))
-                    length = 20;
-                else if (columnName.Equals("xm") || columnName.Equals("name") || columnName.Equals("ksxm"))
-                    length = 40;
-                else if (columnName.Equals("yxdh"))
-                    length = 3;
-                else if (columnName.Equals("zyzdh"))
-                    length = 2;
-                else if (columnName.Equals("zydh"))
-                    length = 2;
+                // 创建进度条窗体
+                using (var progressForm = new ProgressForm())
+                {
+                    // 创建进度报告对象
+                    var progress = new Progress<(int current, int total, string message)>(report =>
+                    {
+                        progressForm.SetProgress(report.current, report.total);
+                        progressForm.SetStatus(report.message);
+                    });
 
-                excelDgv.Add(new DataGridViewDBFField(
-                    dc.ColumnName,
-                    "System.String",
-                    length,
-                    false
-                ));
-                excelHeader.Add(dc.ColumnName);
+                    // 异步显示进度条
+                    var progressTask = Task.Run(() => progressForm.ShowDialog());
+
+                    try
+                    {
+                        // 异步读取Excel文件
+                        DataTable excelDataTable = await ExcelUtil.ReadFileAsync(excelFilePath, progress, progressForm.CancellationToken);
+
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        // 启用按钮
+                        this.btnShowExcelContent.Enabled = true;
+                        this.btnExcelConvertDBF.Enabled = true;
+                        this.btnExcelToExcel.Enabled = true;
+                        this.btnExcelToDBF.Enabled = true;
+
+                        // 获取表头
+                        excelDgv.Clear();
+                        List<string> excelHeader = new List<string>();
+                        foreach (DataColumn dc in excelDataTable.Columns)
+                        {
+                            // 此处根据字段名称设置默认字段长度
+                            int length = 2;
+                            string columnName = dc.ColumnName.ToLower();
+                            // 根据字段名称设置字段默认长度
+                            if (columnName.Equals("ksh") || columnName.Equals("bmh") || columnName.Equals("gkbmh"))
+                                length = 14;
+                            else if (columnName.Equals("zjh") || columnName.Equals("sfzh") || columnName.Equals("idno"))
+                                length = 20;
+                            else if (columnName.Equals("xm") || columnName.Equals("name") || columnName.Equals("ksxm"))
+                                length = 40;
+                            else if (columnName.Equals("yxdh"))
+                                length = 3;
+                            else if (columnName.Equals("zyzdh"))
+                                length = 2;
+                            else if (columnName.Equals("zydh"))
+                                length = 2;
+
+                            excelDgv.Add(new DataGridViewDBFField(
+                                dc.ColumnName,
+                                "System.String",
+                                length,
+                                false
+                            ));
+                            excelHeader.Add(dc.ColumnName);
+                        }
+
+                        // 表格内容赋值
+                        excelDt = excelDataTable;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // 用户取消了操作
+                        MessageBox.Show("操作已取消");
+                    }
+                    catch (Exception ex)
+                    {
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        MessageBox.Show($"读取Excel文件时出错: {ex.Message}");
+                    }
+                }
             }
-
-            // 表格内容赋值
-            excelDt = excelDataTable;
+            finally
+            {
+                // 重新启用按钮
+                this.btnExcelReader.Enabled = true;
+            }
 
             // 关闭自动添加列
             this.dataGridView2.AutoSize = true;
