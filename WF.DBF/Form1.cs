@@ -31,6 +31,9 @@ namespace WF.DBF
         // Excel 文件保存目录
         private string excelSavePath = string.Empty;
 
+        // WebBrowser控件
+        private WebBrowser webBrowser = null;
+
 
         public Form1()
         {
@@ -1033,16 +1036,82 @@ namespace WF.DBF
         {
             if (tabControl1.SelectedIndex == 4)
             {
-                tabPage5.Text = "介绍";
-                tabPage5.Controls.Clear();
-                string introducePath = @"Resources\md\Introduce.md";
-                // 解决中文乱码问题
-                System.Text.Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-                string mdHtml = Markdown.ToHtml(File.ReadAllText(introducePath, Encoding.GetEncoding("GB2312")));
-                WebBrowser webBrowser = new WebBrowser();
-                webBrowser.Dock = DockStyle.Fill;
-                webBrowser.DocumentText = mdHtml;
-                tabPage5.Controls.Add(webBrowser);
+                try
+                {
+                    tabPage5.Text = "介绍";
+                    tabPage5.Controls.Clear();
+                    string introducePath = @"Resources\md\Introduce.md";
+
+                    // 检查文件是否存在
+                    if (!File.Exists(introducePath))
+                    {
+                        Label errorLabel = new Label();
+                        errorLabel.Text = "找不到介绍文件";
+                        errorLabel.Dock = DockStyle.Fill;
+                        tabPage5.Controls.Add(errorLabel);
+                        return;
+                    }
+
+                    // 解决中文乱码问题
+                    System.Text.Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+                    // 尝试不同编码读取文件
+                    string mdContent;
+                    try
+                    {
+                        mdContent = File.ReadAllText(introducePath, Encoding.GetEncoding("UTF-8"));
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            mdContent = File.ReadAllText(introducePath, Encoding.GetEncoding("UTF-8"));
+                        }
+                        catch
+                        {
+                            mdContent = File.ReadAllText(introducePath, Encoding.Default);
+                        }
+                    }
+
+                    string mdHtml = Markdown.ToHtml(mdContent);
+
+                    // 如果WebBrowser控件为空，初始化它
+                    if (webBrowser == null)
+                    {
+                        // 在运行时创建WebBrowser控件，而不是在设计时
+                        if (!DesignMode)
+                        {
+                            webBrowser = new WebBrowser();
+                            webBrowser.Dock = DockStyle.Fill;
+                        }
+                        else
+                        {
+                            // 在设计模式下使用Label代替
+                            Label designLabel = new Label();
+                            designLabel.Text = "设计模式下不显示WebBrowser控件";
+                            designLabel.Dock = DockStyle.Fill;
+                            tabPage5.Controls.Add(designLabel);
+                            return;
+                        }
+                    }
+
+                    // 确保控件已经从之前的父控件中移除
+                    if (webBrowser.Parent != null)
+                    {
+                        webBrowser.Parent.Controls.Remove(webBrowser);
+                    }
+
+                    webBrowser.DocumentText = mdHtml;
+                    tabPage5.Controls.Add(webBrowser);
+                }
+                catch (Exception ex)
+                {
+                    // 在出错时显示错误信息
+                    Label errorLabel = new Label();
+                    errorLabel.Text = $"加载介绍页面时出错: {ex.Message}";
+                    errorLabel.Dock = DockStyle.Fill;
+                    tabPage5.Controls.Add(errorLabel);
+                }
             }
         }
 
@@ -1080,30 +1149,472 @@ namespace WF.DBF
             txtExcelFilePath.Text = path;
         }
 
+        // 剪贴板数据表
+        private DataTable clipboardDt = null;
+        // 剪贴板原始数据
+        private string[][] clipboardRawData = null;
+        // 剪贴板保存路径
+        private string clipboardSavePath = string.Empty;
+        // 是否使用自定义表头
+        private bool useCustomHeaders = false;
+        // 自定义表头
+        private string[] customHeaders = null;
+
+        /// <summary>
+        /// 读取剪贴板内容
+        /// </summary>
         private void btnReadClipboard_Click(object sender, EventArgs e)
         {
-            IDataObject dataObject = Clipboard.GetDataObject();
-            bool hasExcel = dataObject != null && (dataObject.GetDataPresent(DataFormats.CommaSeparatedValue) || dataObject.GetDataPresent(DataFormats.Text));
-            string excelText = hasExcel ? "是" : "否";
-
-            List<List<string>> data = new List<List<string>>();
-            if (hasExcel)
+            try
             {
-                string[] lines = Clipboard.GetText().Split('\n');
-                foreach (string line in lines)
+                // 检查剪贴板是否包含文本
+                if (!Clipboard.ContainsText())
                 {
-                    List<string> row = new List<string>();
-                    string[] cells = line.Split('\t');
-                    foreach (string cell in cells)
-                    {
-                        row.Add(cell);
-                    }
-                    data.Add(row);
+                    lblClipboardStatus.Text = "剪贴板中没有文本内容，请从Excel复制数据";
+                    return;
                 }
+
+                string clipboardText = Clipboard.GetText(TextDataFormat.Text);
+                if (string.IsNullOrWhiteSpace(clipboardText))
+                {
+                    lblClipboardStatus.Text = "剪贴板中的文本内容为空";
+                    return;
+                }
+
+                // 解析剪贴板原始数据
+                clipboardRawData = ParseClipboardText(clipboardText);
+
+                if (clipboardRawData == null || clipboardRawData.Length <= 1)
+                {
+                    lblClipboardStatus.Text = "无法解析剪贴板内容，请确保从Excel复制了有效数据";
+                    return;
+                }
+
+                // 如果选择使用自定义表头
+                if (chkCustomHeaders.Checked)
+                {
+                    // 显示表头编辑面板
+                    panelHeaderEditor.Visible = true;
+
+                    // 准备表头编辑表格
+                    PrepareHeaderEditorGrid();
+                }
+                else
+                {
+                    // 使用默认表头
+                    CreateDataTableWithDefaultHeaders();
+                }
+
+                // 更新状态
+                lblClipboardStatus.Text = $"成功读取数据：{clipboardRawData.Length - 1}行，{clipboardRawData[0].Length}列";
+
+                // 启用导出按钮
+                btnExportClipboardToExcel.Enabled = true;
+                btnExportClipboardToDBF.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"读取剪贴板时出错: {ex.Message}");
+                lblClipboardStatus.Text = "读取剪贴板时出错";
+            }
+        }
+
+        /// <summary>
+        /// 解析剪贴板文本
+        /// </summary>
+        private string[][] ParseClipboardText(string clipboardText)
+        {
+            // 按行分割
+            string[] lines = clipboardText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length == 0) return null;
+
+            string[][] result = new string[lines.Length][];
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                // 按制表符分割每一行
+                result[i] = lines[i].Split('\t');
             }
 
-            txtClipboardText.Text = "是否存在Excel内容: " + excelText + Newtonsoft.Json.JsonConvert.SerializeObject(data);
+            return result;
+        }
 
+        /// <summary>
+        /// 准备表头编辑表格
+        /// </summary>
+        private void PrepareHeaderEditorGrid()
+        {
+            if (clipboardRawData == null || clipboardRawData.Length == 0) return;
+
+            // 创建表头编辑表格
+            DataTable headerTable = new DataTable();
+            headerTable.Columns.Add("列序号", typeof(int));
+            headerTable.Columns.Add("原始表头", typeof(string));
+            headerTable.Columns.Add("自定义表头", typeof(string));
+
+            // 获取第一行作为原始表头
+            string[] originalHeaders = clipboardRawData[0];
+
+            // 初始化自定义表头数组
+            customHeaders = new string[originalHeaders.Length];
+
+            // 填充表头编辑表格
+            for (int i = 0; i < originalHeaders.Length; i++)
+            {
+                string originalHeader = originalHeaders[i];
+                string defaultHeader = string.IsNullOrWhiteSpace(originalHeader) ? $"head{i+1}" : originalHeader;
+
+                DataRow row = headerTable.NewRow();
+                row["列序号"] = i + 1;
+                row["原始表头"] = originalHeader;
+                row["自定义表头"] = defaultHeader;
+
+                headerTable.Rows.Add(row);
+
+                // 默认使用原始表头或默认名称
+                customHeaders[i] = defaultHeader;
+            }
+
+            // 设置表头编辑表格的数据源
+            dataGridViewHeaders.DataSource = headerTable;
+
+            // 调整列宽
+            dataGridViewHeaders.Columns[0].Width = 80;
+            dataGridViewHeaders.Columns[1].Width = 200;
+            dataGridViewHeaders.Columns[2].Width = 200;
+
+            // 禁止编辑列序号和原始表头
+            dataGridViewHeaders.Columns[0].ReadOnly = true;
+            dataGridViewHeaders.Columns[1].ReadOnly = true;
+        }
+
+        /// <summary>
+        /// 使用默认表头创建DataTable
+        /// </summary>
+        private void CreateDataTableWithDefaultHeaders()
+        {
+            if (clipboardRawData == null || clipboardRawData.Length <= 1) return;
+
+            clipboardDt = new DataTable();
+            clipboardDt.TableName = "ClipboardData";
+
+            // 获取第一行作为表头
+            string[] headers = clipboardRawData[0];
+
+            // 添加列
+            for (int i = 0; i < headers.Length; i++)
+            {
+                string columnName = !string.IsNullOrWhiteSpace(headers[i]) ? headers[i] : $"head{i+1}";
+                // 确保列名唯一
+                if (clipboardDt.Columns.Contains(columnName))
+                {
+                    columnName = $"{columnName}_{i}";
+                }
+                clipboardDt.Columns.Add(columnName);
+            }
+
+            // 添加数据行
+            for (int i = 1; i < clipboardRawData.Length; i++)
+            {
+                string[] values = clipboardRawData[i];
+                DataRow dr = clipboardDt.NewRow();
+
+                for (int j = 0; j < values.Length && j < clipboardDt.Columns.Count; j++)
+                {
+                    dr[j] = values[j];
+                }
+
+                clipboardDt.Rows.Add(dr);
+            }
+
+            // 显示数据到DataGridView
+            dataGridViewClipboard.DataSource = clipboardDt;
+        }
+
+        /// <summary>
+        /// 创建使用自定义表头的DataTable
+        /// </summary>
+        private void CreateDataTableWithCustomHeaders()
+        {
+            if (clipboardRawData == null || clipboardRawData.Length <= 1 || customHeaders == null) return;
+
+            clipboardDt = new DataTable();
+            clipboardDt.TableName = "ClipboardData";
+
+            // 添加列
+            for (int i = 0; i < customHeaders.Length; i++)
+            {
+                string columnName = !string.IsNullOrWhiteSpace(customHeaders[i]) ? customHeaders[i] : $"head{i+1}";
+                // 确保列名唯一
+                if (clipboardDt.Columns.Contains(columnName))
+                {
+                    columnName = $"{columnName}_{i}";
+                }
+                clipboardDt.Columns.Add(columnName);
+            }
+
+            // 添加数据行
+            for (int i = 1; i < clipboardRawData.Length; i++)
+            {
+                string[] values = clipboardRawData[i];
+                DataRow dr = clipboardDt.NewRow();
+
+                for (int j = 0; j < values.Length && j < clipboardDt.Columns.Count; j++)
+                {
+                    dr[j] = values[j];
+                }
+
+                clipboardDt.Rows.Add(dr);
+            }
+
+            // 显示数据到DataGridView
+            dataGridViewClipboard.DataSource = clipboardDt;
+        }
+
+        /// <summary>
+        /// 应用自定义表头
+        /// </summary>
+        private void btnApplyHeaders_Click(object sender, EventArgs e)
+        {
+            // 获取自定义表头
+            DataTable headerTable = (DataTable)dataGridViewHeaders.DataSource;
+            if (headerTable == null) return;
+
+            // 更新自定义表头数组
+            for (int i = 0; i < headerTable.Rows.Count; i++)
+            {
+                customHeaders[i] = headerTable.Rows[i]["自定义表头"].ToString();
+            }
+
+            // 创建使用自定义表头的DataTable
+            CreateDataTableWithCustomHeaders();
+
+            // 隐藏表头编辑面板
+            panelHeaderEditor.Visible = false;
+        }
+
+        /// <summary>
+        /// 自定义表头复选框状态改变
+        /// </summary>
+        private void chkCustomHeaders_CheckedChanged(object sender, EventArgs e)
+        {
+            useCustomHeaders = chkCustomHeaders.Checked;
+
+            // 如果已经读取了剪贴板数据
+            if (clipboardRawData != null && clipboardRawData.Length > 0)
+            {
+                if (useCustomHeaders)
+                {
+                    // 显示表头编辑面板
+                    panelHeaderEditor.Visible = true;
+
+                    // 准备表头编辑表格
+                    PrepareHeaderEditorGrid();
+                }
+                else
+                {
+                    // 隐藏表头编辑面板
+                    panelHeaderEditor.Visible = false;
+
+                    // 使用默认表头
+                    CreateDataTableWithDefaultHeaders();
+                }
+            }
+        }
+
+
+
+        /// <summary>
+        /// 选择剪贴板数据保存路径
+        /// </summary>
+        private void btnChooseClipboardSavePath_Click(object sender, EventArgs e)
+        {
+            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
+            {
+                txtClipboardSavePath.Text = folderBrowserDialog1.SelectedPath;
+                clipboardSavePath = folderBrowserDialog1.SelectedPath;
+            }
+        }
+
+        /// <summary>
+        /// 导出剪贴板数据为Excel
+        /// </summary>
+        private async void btnExportClipboardToExcel_Click(object sender, EventArgs e)
+        {
+            if (clipboardDt == null || clipboardDt.Rows.Count == 0)
+            {
+                MessageBox.Show("没有可导出的数据，请先读取剪贴板");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtClipboardSavePath.Text))
+            {
+                MessageBox.Show("请选择保存路径");
+                return;
+            }
+
+            // 禁用按钮，防止重复点击
+            btnExportClipboardToExcel.Enabled = false;
+
+            try
+            {
+                // 创建进度条窗体
+                using (var progressForm = new ProgressForm())
+                {
+                    // 创建进度报告对象
+                    var progress = new ProgressReporter(progressForm);
+
+                    // 异步显示进度条
+                    var progressTask = Task.Run(() => progressForm.ShowDialog());
+
+                    try
+                    {
+                        // 生成文件名
+                        string fileName = Path.Combine(txtClipboardSavePath.Text,
+                            $"ClipboardData_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+
+                        // 异步导出为Excel
+                        await Task.Run(() =>
+                        {
+                            progress.Report((0, 100, "准备导出Excel文件..."));
+
+                            using (var workbook = new ClosedXML.Excel.XLWorkbook())
+                            {
+                                var worksheet = workbook.Worksheets.Add(clipboardDt.TableName);
+
+                                // 添加表头
+                                for (int i = 0; i < clipboardDt.Columns.Count; i++)
+                                {
+                                    worksheet.Cell(1, i + 1).Value = clipboardDt.Columns[i].ColumnName;
+                                    // 设置表头样式
+                                    worksheet.Cell(1, i + 1).Style.Font.Bold = true;
+                                    worksheet.Cell(1, i + 1).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+                                }
+
+                                // 添加数据
+                                int totalRows = clipboardDt.Rows.Count;
+                                for (int i = 0; i < totalRows; i++)
+                                {
+                                    for (int j = 0; j < clipboardDt.Columns.Count; j++)
+                                    {
+                                        worksheet.Cell(i + 2, j + 1).Value = clipboardDt.Rows[i][j].ToString();
+                                    }
+
+                                    // 报告进度
+                                    if (i % 100 == 0 || i == totalRows - 1)
+                                    {
+                                        int progressValue = (int)((float)(i + 1) / totalRows * 100);
+                                        progress.Report((progressValue, 100, $"正在写入数据... {i+1}/{totalRows}"));
+                                    }
+
+                                    // 检查是否取消
+                                    progressForm.CancellationToken.ThrowIfCancellationRequested();
+                                }
+
+                                // 自动调整列宽
+                                worksheet.Columns().AdjustToContents();
+
+                                progress.Report((95, 100, "正在保存文件..."));
+                                workbook.SaveAs(fileName);
+                            }
+
+                            progress.Report((100, 100, "完成"));
+                        }, progressForm.CancellationToken);
+
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        MessageBox.Show($"Excel文件已成功导出到: {fileName}");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // 用户取消了操作
+                        MessageBox.Show("操作已取消");
+                    }
+                    catch (Exception ex)
+                    {
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        MessageBox.Show($"导出Excel文件时出错: {ex.Message}");
+                    }
+                }
+            }
+            finally
+            {
+                // 重新启用按钮
+                btnExportClipboardToExcel.Enabled = true;
+            }
+        }
+
+        /// <summary>
+        /// 导出剪贴板数据为DBF
+        /// </summary>
+        private async void btnExportClipboardToDBF_Click(object sender, EventArgs e)
+        {
+            if (clipboardDt == null || clipboardDt.Rows.Count == 0)
+            {
+                MessageBox.Show("没有可导出的数据，请先读取剪贴板");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtClipboardSavePath.Text))
+            {
+                MessageBox.Show("请选择保存路径");
+                return;
+            }
+
+            // 禁用按钮，防止重复点击
+            btnExportClipboardToDBF.Enabled = false;
+
+            try
+            {
+                // 创建进度条窗体
+                using (var progressForm = new ProgressForm())
+                {
+                    // 创建进度报告对象
+                    var progress = new ProgressReporter(progressForm);
+
+                    // 异步显示进度条
+                    var progressTask = Task.Run(() => progressForm.ShowDialog());
+
+                    try
+                    {
+                        // 生成文件名
+                        string fileName = Path.Combine(txtClipboardSavePath.Text,
+                            $"ClipboardData_{DateTime.Now:yyyyMMdd_HHmmss}.dbf");
+
+                        // 异步导出为DBF
+                        await DBFUtil.DataTableToDBFAsync(fileName, clipboardDt, progress, progressForm.CancellationToken);
+
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        MessageBox.Show($"DBF文件已成功导出到: {fileName}");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // 用户取消了操作
+                        MessageBox.Show("操作已取消");
+                    }
+                    catch (Exception ex)
+                    {
+                        // 关闭进度条
+                        progressForm.Invoke(new Action(() => progressForm.Close()));
+                        await progressTask;
+
+                        MessageBox.Show($"导出DBF文件时出错: {ex.Message}");
+                    }
+                }
+            }
+            finally
+            {
+                // 重新启用按钮
+                btnExportClipboardToDBF.Enabled = true;
+            }
         }
     }
 }

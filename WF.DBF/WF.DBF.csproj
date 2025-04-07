@@ -1,13 +1,24 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Movavi Video Converter.ico</ApplicationIcon>
     <PackageIcon>Movavi Video Converter.ico</PackageIcon>
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+    <!-- 优化启动速度的配置 -->
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+    <DebugType>none</DebugType>
+    <!-- 优化文件大小 -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,20 +26,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="C:\Users\Jacob\Pictures\素材\Movavi Video Converter.ico">
+    <None Include="Movavi Video Converter.ico">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+    <None Remove="Form1.resx.bak" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.102.0" />
-    <PackageReference Include="Markdig" Version="0.31.0" />
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="Markdig" Version="0.40.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="SocialExplorer.FastDBF" Version="1.0.0" />
     <PackageReference Include="System.Collections.NonGeneric" Version="4.3.0" />
-    <PackageReference Include="System.Data.OleDb" Version="8.0.0-preview.5.23280.8" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0-preview.5.23280.8" />
+    <PackageReference Include="System.Data.OleDb" Version="9.0.2" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,5 +48,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+
 
 </Project>
