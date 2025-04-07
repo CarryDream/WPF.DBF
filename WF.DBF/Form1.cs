@@ -4,8 +4,6 @@ using SocialExplorer.IO.FastDBF;
 using System.ComponentModel;
 using System.Data;
 using System.Text;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using WF.DBF.Entity;
 using WF.DBF.Utils;
 using static WF.DBF.Utils.DBFUtil;
@@ -15,22 +13,22 @@ namespace WF.DBF
 {
     public partial class Form1 : Form
     {
-        // DBF ¶ÁÈ¡µ½µÄÊı¾İ
+        // DBF è¯»å–åˆ°çš„æ•°æ®
         private DataTable dbfDt = null;
-        // DBF Ñ¡ÔñµÄ±íÍ·
+        // DBF é€‰æ‹©çš„è¡¨å¤´
         private BindingList<DataGridViewDBFField> dbfDgv = new BindingList<DataGridViewDBFField>();
-        // DBF ÎÄ¼ş´ò¿ªÄ¿Â¼
+        // DBF æ–‡ä»¶æ‰“å¼€ç›®å½•
         private string dbfOpenPath = string.Empty;
-        // DBF ÎÄ¼ş±£´æÄ¿Â¼
+        // DBF æ–‡ä»¶ä¿å­˜ç›®å½•
         private string dbfSavePath = string.Empty;
 
-        // Excel ¶ÁÈ¡µ½µÄÊı¾İ
+        // Excel è¯»å–åˆ°çš„æ•°æ®
         private DataTable excelDt = null;
-        // Excel Ñ¡ÔñµÄ±íÍ·
+        // Excel é€‰æ‹©çš„è¡¨å¤´
         private BindingList<DataGridViewDBFField> excelDgv = new BindingList<DataGridViewDBFField>();
-        // Excel ÎÄ¼ş´ò¿ªÄ¿Â¼
+        // Excel æ–‡ä»¶æ‰“å¼€ç›®å½•
         private string excelOpenPath = string.Empty;
-        // Excel ÎÄ¼ş±£´æÄ¿Â¼
+        // Excel æ–‡ä»¶ä¿å­˜ç›®å½•
         private string excelSavePath = string.Empty;
 
 
@@ -40,13 +38,13 @@ namespace WF.DBF
         }
 
         /// <summary>
-        /// ¹Ø±Õ´°¿ÚÇ°Ö´ĞĞµÄÊÂ¼ş
+        /// å…³é—­çª—å£å‰æ‰§è¡Œçš„äº‹ä»¶
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (MessageBox.Show("È·ÊµÒªÍË³öÂğ", "ÌáÊ¾", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+            if (MessageBox.Show("ç¡®å®è¦é€€å‡ºå—", "æç¤º", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
             {
                 e.Cancel = true;
             }
@@ -54,42 +52,42 @@ namespace WF.DBF
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            // ======> ¶ÁÈ¡ DBF
-            // ½ûÓÃ°´Å¥
+            // ======> è¯»å– DBF
+            // ç¦ç”¨æŒ‰é’®
             this.btnShowContent.Enabled = false;
             this.btnConvertExcel.Enabled = false;
             this.btnExportExcel.Enabled = false;
             this.btnExportDBF.Enabled = false;
 
             this.cmbType.Items.Clear();
-            this.cmbType.Items.Insert(0, "ÇëÑ¡ÔñÊä³öÀàĞÍ");
+            this.cmbType.Items.Insert(0, "è¯·é€‰æ‹©è¾“å‡ºç±»å‹");
             this.cmbType.Items.Add("System.String");
             this.cmbType.SelectedIndex = 0;
 
-            // ======> ¶ÁÈ¡ Excel
+            // ======> è¯»å– Excel
             this.btnShowExcelContent.Enabled = false;
             this.btnExcelConvertDBF.Enabled = false;
             this.btnExcelToExcel.Enabled = false;
             this.btnExcelToDBF.Enabled = false;
 
             this.cmbExcelType.Items.Clear();
-            this.cmbExcelType.Items.Insert(0, "ÇëÑ¡ÔñÊä³öÀàĞÍ");
+            this.cmbExcelType.Items.Insert(0, "è¯·é€‰æ‹©è¾“å‡ºç±»å‹");
             this.cmbExcelType.Items.Add("System.String");
             this.cmbExcelType.SelectedIndex = 0;
 
         }
 
-        // =========>> DBF ÎÄ¼ş¶ÁÈ¡ <<==========
+        // =========>> DBF æ–‡ä»¶è¯»å– <<==========
 
         /// <summary>
-        /// Ñ¡Ôñ DBF ÎÄ¼ş
+        /// é€‰æ‹© DBF æ–‡ä»¶
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void btnChooseDBFFile_Click(object sender, EventArgs e)
         {
-            this.ofdDBFFile.Title = "ÇëÑ¡ÔñDBFÎÄ¼ş";
-            this.ofdDBFFile.Filter = "DBFÎÄ¼ş (*.dbf)|*.dbf";
+            this.ofdDBFFile.Title = "è¯·é€‰æ‹©DBFæ–‡ä»¶";
+            this.ofdDBFFile.Filter = "DBFæ–‡ä»¶ (*.dbf)|*.dbf";
             this.ofdDBFFile.FileName = "";
             this.ofdDBFFile.FilterIndex = 1;
             this.ofdDBFFile.RestoreDirectory = true;
@@ -102,7 +100,7 @@ namespace WF.DBF
         }
 
         /// <summary>
-        /// ¶ÁÈ¡ DBF ÎÄ¼şÄÚÈİ
+        /// è¯»å– DBF æ–‡ä»¶å†…å®¹
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -111,14 +109,14 @@ namespace WF.DBF
             string dbfFilePath = this.txtDBFFilePath.Text;
             if (dbfFilePath == "")
             {
-                MessageBox.Show("ÇëÑ¡ÔñÒª¶ÁÈ¡µÄDBFÎÄ¼ş");
+                MessageBox.Show("è¯·é€‰æ‹©è¦è¯»å–çš„DBFæ–‡ä»¶");
                 return;
             }
 
             DBFUtil.TDbfTable dbfTable = new DBFUtil.TDbfTable(dbfFilePath);
-            // ±í¸ñÄÚÈİ¸³Öµ
+            // è¡¨æ ¼å†…å®¹èµ‹å€¼
             dbfDt = dbfTable.Table;
-            // ÆôÓÃ°´Å¥
+            // å¯ç”¨æŒ‰é’®
             this.btnShowContent.Enabled = true;
             this.btnConvertExcel.Enabled = true;
             this.btnExportExcel.Enabled = true;
@@ -139,10 +137,10 @@ namespace WF.DBF
 
             this.dataGridView1.AutoSize = true;
             this.dataGridView1.DataSource = dbfDgv;
-            // DataGridView ÄÚÈİ¿í¶È×Ô¶¯ÌîÂú
+            // DataGridView å†…å®¹å®½åº¦è‡ªåŠ¨å¡«æ»¡
             this.dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             this.dataGridView1.Refresh();
-            // ÉèÖÃ DataGridView ĞòºÅ
+            // è®¾ç½® DataGridView åºå·
             this.dataGridView1.RowPostPaint += new DataGridViewRowPostPaintEventHandler(this.dataGridView1_RowPostPaint);
         }
 
@@ -164,17 +162,17 @@ namespace WF.DBF
                     if (this.dataGridView1.Rows[e.RowIndex].Cells["nName"].Value == null)
                     {
                         string oName = this.dataGridView1.Rows[e.RowIndex].Cells["oName"].Value.ToString();
-                        if (oName.StartsWith("±¨ÃûºÅ") || oName.StartsWith("¿¼ÉúºÅ") || oName.ToUpper() == "BMH" || oName.ToUpper() == "KSH" || oName.ToUpper() == "GKBMH")
+                        if (oName.StartsWith("æŠ¥åå·") || oName.StartsWith("è€ƒç”Ÿå·") || oName.ToUpper() == "BMH" || oName.ToUpper() == "KSH" || oName.ToUpper() == "GKBMH")
                         {
                             oName = "KSH";
                             this.dataGridView1.Rows[e.RowIndex].Cells["nLength"].Value = "14";
                         }
-                        else if (oName.StartsWith("Ö¤¼şºÅ") || oName.StartsWith("Éí·İÖ¤") || oName.ToUpper().StartsWith("SFZ") || oName.ToUpper().StartsWith("ZJH"))
+                        else if (oName.StartsWith("è¯ä»¶å·") || oName.StartsWith("èº«ä»½è¯") || oName.ToUpper().StartsWith("SFZ") || oName.ToUpper().StartsWith("ZJH"))
                         {
                             oName = "ZJH";
                             this.dataGridView1.Rows[e.RowIndex].Cells["nLength"].Value = "20";
                         }
-                        else if (oName.StartsWith("ĞÕÃû") || oName.StartsWith("¿¼ÉúĞÕÃû") || oName.ToUpper() == "XM" || oName.ToUpper() == "KSXM")
+                        else if (oName.StartsWith("å§“å") || oName.StartsWith("è€ƒç”Ÿå§“å") || oName.ToUpper() == "XM" || oName.ToUpper() == "KSXM")
                         {
                             oName = "KSXM";
                             this.dataGridView1.Rows[e.RowIndex].Cells["nLength"].Value = "30";
@@ -213,17 +211,17 @@ namespace WF.DBF
         private void btnConvertExcel_Click(object sender, EventArgs e)
         {
             SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Title = "±£´æExcelÎÄ¼ş";
+            saveFileDialog.Title = "ä¿å­˜Excelæ–‡ä»¶";
             saveFileDialog.InitialDirectory = this.dbfSavePath;
             saveFileDialog.OverwritePrompt = true;
             saveFileDialog.AddExtension = true;
             saveFileDialog.DefaultExt = "xlsx";
-            saveFileDialog.Filter = "ExcelÎÄ¼ş|*.xlsx";
+            saveFileDialog.Filter = "Excelæ–‡ä»¶|*.xlsx";
             saveFileDialog.FileName = dbfDt.TableName + "_" + dbfDt.Rows.Count + ".xlsx";
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 var filename = saveFileDialog.FileName;
-                // ¸³Öµ±£´æDBFÎÄ¼şÂ·¾¶
+                // èµ‹å€¼ä¿å­˜DBFæ–‡ä»¶è·¯å¾„
                 this.dbfSavePath = Path.GetDirectoryName(filename);
 
                 XLWorkbook wb = new XLWorkbook();
@@ -236,7 +234,7 @@ namespace WF.DBF
                 worksheet.Columns().AdjustToContents(10.0, 50.0);
                 // Export the Excel file
                 wb.SaveAs(filename);
-                MessageBox.Show("ÎÄ¼ş±£´æ³É¹¦! Â·¾¶: " + filename);
+                MessageBox.Show("æ–‡ä»¶ä¿å­˜æˆåŠŸ! è·¯å¾„: " + filename);
             }
         }
 
@@ -249,19 +247,19 @@ namespace WF.DBF
 
             if (name == "")
             {
-                MessageBox.Show("Êä³öÃû³Æ²»ÄÜÎª¿Õ!");
+                MessageBox.Show("è¾“å‡ºåç§°ä¸èƒ½ä¸ºç©º!");
                 return;
             }
 
             if (type == "")
             {
-                MessageBox.Show("Êä³öÀàĞÍ²»ÄÜÎª¿Õ!");
+                MessageBox.Show("è¾“å‡ºç±»å‹ä¸èƒ½ä¸ºç©º!");
                 return;
             }
 
             if (length == "")
             {
-                MessageBox.Show("Êä³ö³¤¶È²»ÄÜÎª¿Õ!");
+                MessageBox.Show("è¾“å‡ºé•¿åº¦ä¸èƒ½ä¸ºç©º!");
                 return;
             }
 
@@ -279,7 +277,7 @@ namespace WF.DBF
 
         private void btnExportExcel_Click(object sender, EventArgs e)
         {
-            // 1. »ñÈ¡ÒÑÑ¡ÔñµÄ±íÍ·ĞÅÏ¢
+            // 1. è·å–å·²é€‰æ‹©çš„è¡¨å¤´ä¿¡æ¯
             int cnt = dbfDgv.Count;
             List<DataGridViewDBFField> fields = new List<DataGridViewDBFField>();
             for (int i = 0; i < cnt; i++)
@@ -292,15 +290,15 @@ namespace WF.DBF
 
             if (fields.Count == 0)
             {
-                MessageBox.Show("ÇëÖÁÉÙÑ¡ÔñÒ»¸ö±íÍ·!");
+                MessageBox.Show("è¯·è‡³å°‘é€‰æ‹©ä¸€ä¸ªè¡¨å¤´!");
                 return;
             }
 
-            // 2. »ñÈ¡DBFÎÄ¼şÄÚÈİĞÅÏ¢
+            // 2. è·å–DBFæ–‡ä»¶å†…å®¹ä¿¡æ¯
             int rows = dbfDt.Rows.Count;
             int columns = dbfDt.Columns.Count;
 
-            // ÉèÖÃ±íÍ·
+            // è®¾ç½®è¡¨å¤´
             DataTable excelDataTable = new DataTable();
             excelDataTable.TableName = dbfDt.TableName + "_new_" + dbfDt.Rows.Count;
             for (int i = 0; i < fields.Count; i++)
@@ -312,7 +310,7 @@ namespace WF.DBF
                 excelDataTable.Columns.Add(col);
             }
 
-            // 3. ·â×°³ÉĞÂµÄDataTable
+            // 3. å°è£…æˆæ–°çš„DataTable
             for (int i = 0; i < rows; i++)
             {
                 DataRow dr = excelDataTable.NewRow();
@@ -330,14 +328,14 @@ namespace WF.DBF
                 excelDataTable.Rows.Add(dr);
             }
 
-            // 4. Ñ¡Ôñµ¼³öÎÄ¼şÂ·¾¶
+            // 4. é€‰æ‹©å¯¼å‡ºæ–‡ä»¶è·¯å¾„
             SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Title = "±£´æExcelÎÄ¼ş";
+            saveFileDialog.Title = "ä¿å­˜Excelæ–‡ä»¶";
             saveFileDialog.InitialDirectory = this.dbfSavePath;
             saveFileDialog.OverwritePrompt = true;
             saveFileDialog.AddExtension = true;
             saveFileDialog.DefaultExt = "xlsx";
-            saveFileDialog.Filter = "ExcelÎÄ¼ş|*.xlsx";
+            saveFileDialog.Filter = "Excelæ–‡ä»¶|*.xlsx";
             saveFileDialog.FileName = excelDataTable.TableName + ".xlsx";
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -353,15 +351,15 @@ namespace WF.DBF
                 worksheet.SheetView.FreezeRows(1);
                 worksheet.Columns().AdjustToContents(10.0, 50.0);
 
-                // 5. µ¼³öExcelÎÄ¼ş
+                // 5. å¯¼å‡ºExcelæ–‡ä»¶
                 wb.SaveAs(filename);
-                MessageBox.Show("ÎÄ¼ş±£´æ³É¹¦! Â·¾¶: " + filename);
+                MessageBox.Show("æ–‡ä»¶ä¿å­˜æˆåŠŸ! è·¯å¾„: " + filename);
             }
         }
 
         private void btnExportDBF_Click(object sender, EventArgs e)
         {
-            // 1. »ñÈ¡ÒÑÑ¡ÔñµÄ±íÍ·ĞÅÏ¢
+            // 1. è·å–å·²é€‰æ‹©çš„è¡¨å¤´ä¿¡æ¯
             int cnt = dbfDgv.Count;
             List<DataGridViewDBFField> fields = new List<DataGridViewDBFField>();
             for (int i = 0; i < cnt; i++)
@@ -374,29 +372,29 @@ namespace WF.DBF
 
             if (fields.Count == 0)
             {
-                MessageBox.Show("ÇëÖÁÉÙÑ¡ÔñÒ»¸ö±íÍ·!");
+                MessageBox.Show("è¯·è‡³å°‘é€‰æ‹©ä¸€ä¸ªè¡¨å¤´!");
                 return;
             }
 
-            // 2. Ñ¡Ôñ DBF ÎÄ¼şµ¼³öÂ·¾¶
+            // 2. é€‰æ‹© DBF æ–‡ä»¶å¯¼å‡ºè·¯å¾„
             SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Title = "±£´æDBFÎÄ¼ş";
+            saveFileDialog.Title = "ä¿å­˜DBFæ–‡ä»¶";
             saveFileDialog.InitialDirectory = this.dbfSavePath;
             saveFileDialog.OverwritePrompt = true;
             saveFileDialog.AddExtension = true;
             saveFileDialog.DefaultExt = "dbf";
-            saveFileDialog.Filter = "DBFÎÄ¼ş|*.dbf";
+            saveFileDialog.Filter = "DBFæ–‡ä»¶|*.dbf";
             saveFileDialog.FileName = dbfDt.TableName + "_new_" + dbfDt.Rows.Count + ".dbf";
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 var filename = saveFileDialog.FileName;
                 this.dbfSavePath = Path.GetDirectoryName(filename);
 
-                // 3. »ñÈ¡DBFÎÄ¼şÄÚÈİĞÅÏ¢
+                // 3. è·å–DBFæ–‡ä»¶å†…å®¹ä¿¡æ¯
                 int rows = dbfDt.Rows.Count;
                 int columns = dbfDt.Columns.Count;
 
-                // ÉèÖÃÄ¬ÈÏ±àÂëÎª GB2312
+                // è®¾ç½®é»˜è®¤ç¼–ç ä¸º GB2312
                 Encoding encoding = DBFUtil.GetEncoding("GB2312");
                 DbfFile dbf = new DbfFile(encoding);
                 dbf.Open(filename, FileMode.Create);
@@ -405,7 +403,7 @@ namespace WF.DBF
                     dbf.Header.AddColumn(new DbfColumn(field.NName, DbfColumn.DbfColumnType.Character, field.NLength, 0));
                 }
 
-                // 4. ·â×°³ÉĞÂµÄ¶ÔÏó
+                // 4. å°è£…æˆæ–°çš„å¯¹è±¡
                 for (int i = 0; i < rows; i++)
                 {
                     DbfRecord record = new DbfRecord(dbf.Header);
@@ -424,18 +422,18 @@ namespace WF.DBF
                     dbf.Write(record, true);
                 }
 
-                // 5. µ¼³öDBFÎÄ¼ş
+                // 5. å¯¼å‡ºDBFæ–‡ä»¶
                 dbf.Close();
-                MessageBox.Show("ÎÄ¼ş±£´æ³É¹¦! Â·¾¶: " + filename);
+                MessageBox.Show("æ–‡ä»¶ä¿å­˜æˆåŠŸ! è·¯å¾„: " + filename);
             }
         }
 
-        // =========>> ExcelÎÄ¼ş¶ÁÈ¡ <<==========
+        // =========>> Excelæ–‡ä»¶è¯»å– <<==========
 
         private void btnChooseExcelFile_Click(object sender, EventArgs e)
         {
-            this.ofdExcelFile.Title = "ÇëÑ¡ÔñExcelÎÄ¼ş";
-            this.ofdExcelFile.Filter = "ExcelÎÄ¼ş (*.xlsx)|*.xlsx";
+            this.ofdExcelFile.Title = "è¯·é€‰æ‹©Excelæ–‡ä»¶";
+            this.ofdExcelFile.Filter = "Excelæ–‡ä»¶ (*.xlsx)|*.xlsx";
             this.ofdExcelFile.FileName = "";
             this.ofdExcelFile.FilterIndex = 1;
             this.ofdExcelFile.RestoreDirectory = true;
@@ -452,26 +450,26 @@ namespace WF.DBF
             string excelFilePath = this.txtExcelFilePath.Text;
             if (excelFilePath == "")
             {
-                MessageBox.Show("ÇëÑ¡ÔñÒª¶ÁÈ¡µÄExcelÎÄ¼ş");
+                MessageBox.Show("è¯·é€‰æ‹©è¦è¯»å–çš„Excelæ–‡ä»¶");
                 return;
             }
 
-            // ÆôÓÃ°´Å¥
+            // å¯ç”¨æŒ‰é’®
             this.btnShowExcelContent.Enabled = true;
             this.btnExcelConvertDBF.Enabled = true;
             this.btnExcelToExcel.Enabled = true;
             this.btnExcelToDBF.Enabled = true;
 
             DataTable excelDataTable = ExcelUtil.readFile(excelFilePath);
-            // »ñÈ¡±íÍ·
+            // è·å–è¡¨å¤´
             excelDgv.Clear();
             List<string> excelHeader = new List<string>();
             foreach (DataColumn dc in excelDataTable.Columns)
             {
-                // ´Ë´¦¸ù¾İ×Ö¶ÎÃû³ÆÉèÖÃÄ¬ÈÏ×Ö¶Î³¤¶È
+                // æ­¤å¤„æ ¹æ®å­—æ®µåç§°è®¾ç½®é»˜è®¤å­—æ®µé•¿åº¦
                 int length = 2;
                 string columnName = dc.ColumnName.ToLower();
-                // ¸ù¾İ×Ö¶ÎÃû³ÆÉèÖÃ×Ö¶ÎÄ¬ÈÏ³¤¶È
+                // æ ¹æ®å­—æ®µåç§°è®¾ç½®å­—æ®µé»˜è®¤é•¿åº¦
                 if (columnName.Equals("ksh") || columnName.Equals("bmh") || columnName.Equals("gkbmh"))
                     length = 14;
                 else if (columnName.Equals("zjh") || columnName.Equals("sfzh") || columnName.Equals("idno"))
@@ -494,15 +492,15 @@ namespace WF.DBF
                 excelHeader.Add(dc.ColumnName);
             }
 
-            // ±í¸ñÄÚÈİ¸³Öµ
+            // è¡¨æ ¼å†…å®¹èµ‹å€¼
             excelDt = excelDataTable;
 
-            // ¹Ø±Õ×Ô¶¯Ìí¼ÓÁĞ
+            // å…³é—­è‡ªåŠ¨æ·»åŠ åˆ—
             this.dataGridView2.AutoSize = true;
             this.dataGridView2.DataSource = excelDgv;
             this.dataGridView2.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             this.dataGridView2.Refresh();
-            // ÉèÖÃ dataGridView ĞòºÅ
+            // è®¾ç½® dataGridView åºå·
             this.dataGridView2.RowPostPaint += new DataGridViewRowPostPaintEventHandler(this.dataGridView2_RowPostPaint);
         }
 
@@ -518,39 +516,39 @@ namespace WF.DBF
             {
                 DataGridViewCheckBoxCell cell = (DataGridViewCheckBoxCell)this.dataGridView2.Rows[e.RowIndex].Cells[e.ColumnIndex];
                 cell.Value = !Convert.ToBoolean(cell.Value);
-                //MessageBox.Show("ÊÇ·ñÑ¡ÖĞ: " + cell.Value.ToString() + ", ×Ö¶ÎÃû³Æ: " + this.dataGridView2.Rows[e.RowIndex].Cells[0].Value.ToString());
+                //MessageBox.Show("æ˜¯å¦é€‰ä¸­: " + cell.Value.ToString() + ", å­—æ®µåç§°: " + this.dataGridView2.Rows[e.RowIndex].Cells[0].Value.ToString());
                 if (cell.Value.ToString() == "True")
                 {
                     this.dataGridView2.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightBlue;
                     if (this.dataGridView2.Rows[e.RowIndex].Cells["enName"].Value == null)
                     {
                         string eName = this.dataGridView2.Rows[e.RowIndex].Cells["eName"].Value.ToString();
-                        if (eName.StartsWith("±¨ÃûºÅ") || eName.StartsWith("¿¼ÉúºÅ") || eName.ToUpper() == "BMH" || eName.ToUpper() == "KSH" || eName.ToUpper() == "GKBMH")
+                        if (eName.StartsWith("æŠ¥åå·") || eName.StartsWith("è€ƒç”Ÿå·") || eName.ToUpper() == "BMH" || eName.ToUpper() == "KSH" || eName.ToUpper() == "GKBMH")
                         {
                             eName = "KSH";
                             this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "14";
                         }
-                        else if (eName.StartsWith("Ö¤¼şºÅ") || eName.StartsWith("Éí·İÖ¤") || eName.ToUpper().StartsWith("SFZ") || eName.ToUpper().StartsWith("ZJH"))
+                        else if (eName.StartsWith("è¯ä»¶å·") || eName.StartsWith("èº«ä»½è¯") || eName.ToUpper().StartsWith("SFZ") || eName.ToUpper().StartsWith("ZJH"))
                         {
                             eName = "ZJH";
                             this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "20";
                         }
-                        else if (eName.StartsWith("ĞÕÃû") || eName.StartsWith("¿¼ÉúĞÕÃû") || eName.ToUpper() == "XM" || eName.ToUpper() == "KSXM")
+                        else if (eName.StartsWith("å§“å") || eName.StartsWith("è€ƒç”Ÿå§“å") || eName.ToUpper() == "XM" || eName.ToUpper() == "KSXM")
                         {
                             eName = "KSXM";
                             this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "30";
                         }
-                        else if (eName.StartsWith("ÔºĞ£´úºÅ") || eName.StartsWith("ÔºĞ£±àÂë") || eName.ToUpper() == "YXDH" || eName.ToUpper() == "YXBM")
+                        else if (eName.StartsWith("é™¢æ ¡ä»£å·") || eName.StartsWith("é™¢æ ¡ç¼–ç ") || eName.ToUpper() == "YXDH" || eName.ToUpper() == "YXBM")
                         {
                             eName = "YXDH";
                             this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "3";
                         }
-                        else if (eName.StartsWith("×¨Òµ×é´úºÅ") || eName.StartsWith("×¨Òµ×é´úÂë") || eName.ToUpper() == "ZYZDH" || eName.ToUpper() == "ZYZDM")
+                        else if (eName.StartsWith("ä¸“ä¸šç»„ä»£å·") || eName.StartsWith("ä¸“ä¸šç»„ä»£ç ") || eName.ToUpper() == "ZYZDH" || eName.ToUpper() == "ZYZDM")
                         {
                             eName = "ZYZDH";
                             this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "2";
                         }
-                        else if (eName.StartsWith("×¨Òµ´úºÅ") || eName.StartsWith("×¨Òµ±àÂë") || eName.ToUpper() == "ZYDH" || eName.ToUpper() == "ZYBM")
+                        else if (eName.StartsWith("ä¸“ä¸šä»£å·") || eName.StartsWith("ä¸“ä¸šç¼–ç ") || eName.ToUpper() == "ZYDH" || eName.ToUpper() == "ZYBM")
                         {
                             eName = "ZYDH";
                             this.dataGridView2.Rows[e.RowIndex].Cells["enLength"].Value = "30";
@@ -588,12 +586,12 @@ namespace WF.DBF
         private void btnExcelConvertDBF_Click(object sender, EventArgs e)
         {
             SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Title = "±£´æDBFÎÄ¼ş";
+            saveFileDialog.Title = "ä¿å­˜DBFæ–‡ä»¶";
             saveFileDialog.InitialDirectory = this.excelSavePath;
             saveFileDialog.OverwritePrompt = true;
             saveFileDialog.AddExtension = true;
             saveFileDialog.DefaultExt = "dbf";
-            saveFileDialog.Filter = "DBFÎÄ¼ş|*.dbf";
+            saveFileDialog.Filter = "DBFæ–‡ä»¶|*.dbf";
             saveFileDialog.FileName = excelDt.TableName + "_" + excelDt.Rows.Count + ".dbf";
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -601,7 +599,7 @@ namespace WF.DBF
                 this.excelSavePath = Path.GetDirectoryName(filename);
 
                 DBFUtil.DataTableToDBF(filename, excelDt);
-                MessageBox.Show("ÎÄ¼ş±£´æ³É¹¦! Â·¾¶: " + filename);
+                MessageBox.Show("æ–‡ä»¶ä¿å­˜æˆåŠŸ! è·¯å¾„: " + filename);
             }
         }
 
@@ -614,19 +612,19 @@ namespace WF.DBF
 
             if (name == "")
             {
-                MessageBox.Show("Êä³öÃû³Æ²»ÄÜÎª¿Õ!");
+                MessageBox.Show("è¾“å‡ºåç§°ä¸èƒ½ä¸ºç©º!");
                 return;
             }
 
             if (type == "")
             {
-                MessageBox.Show("Êä³öÀàĞÍ²»ÄÜÎª¿Õ!");
+                MessageBox.Show("è¾“å‡ºç±»å‹ä¸èƒ½ä¸ºç©º!");
                 return;
             }
 
             if (length == "")
             {
-                MessageBox.Show("Êä³ö³¤¶È²»ÄÜÎª¿Õ!");
+                MessageBox.Show("è¾“å‡ºé•¿åº¦ä¸èƒ½ä¸ºç©º!");
                 return;
             }
 
@@ -644,7 +642,7 @@ namespace WF.DBF
 
         private void btnExcelToExcel_Click(object sender, EventArgs e)
         {
-            // 1. »ñÈ¡ÒÑÑ¡ÔñµÄ±íÍ·ĞÅÏ¢
+            // 1. è·å–å·²é€‰æ‹©çš„è¡¨å¤´ä¿¡æ¯
             int cnt = excelDgv.Count;
             List<DataGridViewDBFField> fields = new List<DataGridViewDBFField>();
             for (int i = 0; i < cnt; i++)
@@ -657,15 +655,15 @@ namespace WF.DBF
 
             if (fields.Count == 0)
             {
-                MessageBox.Show("ÇëÖÁÉÙÑ¡ÔñÒ»¸ö±íÍ·!");
+                MessageBox.Show("è¯·è‡³å°‘é€‰æ‹©ä¸€ä¸ªè¡¨å¤´!");
                 return;
             }
 
-            // 2. »ñÈ¡DBFÎÄ¼şÄÚÈİĞÅÏ¢
+            // 2. è·å–DBFæ–‡ä»¶å†…å®¹ä¿¡æ¯
             int rows = excelDt.Rows.Count;
             int columns = excelDt.Columns.Count;
 
-            // ÉèÖÃ±íÍ·
+            // è®¾ç½®è¡¨å¤´
             DataTable excelDataTable = new DataTable();
             excelDataTable.TableName = excelDt.TableName + "_new_" + +excelDt.Rows.Count;
             for (int i = 0; i < fields.Count; i++)
@@ -677,7 +675,7 @@ namespace WF.DBF
                 excelDataTable.Columns.Add(col);
             }
 
-            // 3. ·â×°³ÉĞÂµÄDataTable
+            // 3. å°è£…æˆæ–°çš„DataTable
             for (int i = 0; i < rows; i++)
             {
                 DataRow dr = excelDataTable.NewRow();
@@ -695,14 +693,14 @@ namespace WF.DBF
                 excelDataTable.Rows.Add(dr);
             }
 
-            // 4. Ñ¡Ôñµ¼³öÎÄ¼şÂ·¾¶
+            // 4. é€‰æ‹©å¯¼å‡ºæ–‡ä»¶è·¯å¾„
             SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Title = "±£´æExcelÎÄ¼ş";
+            saveFileDialog.Title = "ä¿å­˜Excelæ–‡ä»¶";
             saveFileDialog.InitialDirectory = this.excelSavePath;
             saveFileDialog.OverwritePrompt = true;
             saveFileDialog.AddExtension = true;
             saveFileDialog.DefaultExt = "xlsx";
-            saveFileDialog.Filter = "ExcelÎÄ¼ş|*.xlsx";
+            saveFileDialog.Filter = "Excelæ–‡ä»¶|*.xlsx";
             saveFileDialog.FileName = excelDataTable.TableName + ".xlsx";
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -718,15 +716,15 @@ namespace WF.DBF
                 worksheet.SheetView.FreezeRows(1);
                 worksheet.Columns().AdjustToContents(10.0, 50.0);
 
-                // 5. µ¼³öExcelÎÄ¼ş
+                // 5. å¯¼å‡ºExcelæ–‡ä»¶
                 wb.SaveAs(filename);
-                MessageBox.Show("ÎÄ¼ş±£´æ³É¹¦! Â·¾¶: " + filename);
+                MessageBox.Show("æ–‡ä»¶ä¿å­˜æˆåŠŸ! è·¯å¾„: " + filename);
             }
         }
 
         private void btnExcelToDBF_Click(object sender, EventArgs e)
         {
-            // 1. »ñÈ¡ÒÑÑ¡ÔñµÄ±íÍ·ĞÅÏ¢
+            // 1. è·å–å·²é€‰æ‹©çš„è¡¨å¤´ä¿¡æ¯
             int cnt = excelDgv.Count;
             List<DataGridViewDBFField> fields = new List<DataGridViewDBFField>();
             for (int i = 0; i < cnt; i++)
@@ -739,29 +737,29 @@ namespace WF.DBF
 
             if (fields.Count == 0)
             {
-                MessageBox.Show("ÇëÖÁÉÙÑ¡ÔñÒ»¸ö±íÍ·!");
+                MessageBox.Show("è¯·è‡³å°‘é€‰æ‹©ä¸€ä¸ªè¡¨å¤´!");
                 return;
             }
 
-            // 2. Ñ¡Ôñ DBF ÎÄ¼şµ¼³öÂ·¾¶
+            // 2. é€‰æ‹© DBF æ–‡ä»¶å¯¼å‡ºè·¯å¾„
             SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Title = "±£´æDBFÎÄ¼ş";
+            saveFileDialog.Title = "ä¿å­˜DBFæ–‡ä»¶";
             saveFileDialog.InitialDirectory = this.excelSavePath;
             saveFileDialog.OverwritePrompt = true;
             saveFileDialog.AddExtension = true;
             saveFileDialog.DefaultExt = "dbf";
-            saveFileDialog.Filter = "DBFÎÄ¼ş|*.dbf";
+            saveFileDialog.Filter = "DBFæ–‡ä»¶|*.dbf";
             saveFileDialog.FileName = excelDt.TableName + "_new_" + +excelDt.Rows.Count + ".dbf";
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 var filename = saveFileDialog.FileName;
                 this.excelSavePath = Path.GetDirectoryName(filename);
 
-                // 3. »ñÈ¡DBFÎÄ¼şÄÚÈİĞÅÏ¢
+                // 3. è·å–DBFæ–‡ä»¶å†…å®¹ä¿¡æ¯
                 int rows = excelDt.Rows.Count;
                 int columns = excelDt.Columns.Count;
 
-                // ÉèÖÃÄ¬ÈÏ±àÂëÎª GB2312
+                // è®¾ç½®é»˜è®¤ç¼–ç ä¸º GB2312
                 Encoding encoding = DBFUtil.GetEncoding("GB2312");
                 DbfFile dbf = new DbfFile(encoding);
                 dbf.Open(filename, FileMode.Create);
@@ -770,7 +768,7 @@ namespace WF.DBF
                     dbf.Header.AddColumn(new DbfColumn(field.NName, DbfColumn.DbfColumnType.Character, field.NLength, 0));
                 }
 
-                // 4. ·â×°³ÉĞÂµÄ¶ÔÏó
+                // 4. å°è£…æˆæ–°çš„å¯¹è±¡
                 for (int i = 0; i < rows; i++)
                 {
                     DbfRecord record = new DbfRecord(dbf.Header);
@@ -789,29 +787,29 @@ namespace WF.DBF
                     dbf.Write(record, true);
                 }
 
-                // 5. µ¼³öDBFÎÄ¼ş
+                // 5. å¯¼å‡ºDBFæ–‡ä»¶
                 dbf.Close();
-                MessageBox.Show("ÎÄ¼ş±£´æ³É¹¦! Â·¾¶: " + filename);
+                MessageBox.Show("æ–‡ä»¶ä¿å­˜æˆåŠŸ! è·¯å¾„: " + filename);
             }
         }
 
         /// <summary>
-        /// °´¼üºó´¥·¢
+        /// æŒ‰é”®åè§¦å‘
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            // Èç¹û°´ÏÂÁË»Ø³µ¼ü
+            // å¦‚æœæŒ‰ä¸‹äº†å›è½¦é”®
             if (e.KeyCode == Keys.Enter)
             {
-                // µ÷ÓÃ²éÑ¯°´Å¥µÄÊÂ¼ş´¦Àíº¯Êı
+                // è°ƒç”¨æŸ¥è¯¢æŒ‰é’®çš„äº‹ä»¶å¤„ç†å‡½æ•°
             }
         }
 
         private void txtName_Leave(object sender, EventArgs e)
         {
-            // ÎÄ±¾¿òÊ§È¥½¹µãÊÂ¼ş
+            // æ–‡æœ¬æ¡†å¤±å»ç„¦ç‚¹äº‹ä»¶
             string name = this.txtName.Text.ToString();
             if (string.IsNullOrEmpty(name))
             {
@@ -851,7 +849,7 @@ namespace WF.DBF
 
         private void txtExcelName_Leave(object sender, EventArgs e)
         {
-            // ÎÄ±¾¿òÊ§È¥½¹µãÊÂ¼ş
+            // æ–‡æœ¬æ¡†å¤±å»ç„¦ç‚¹äº‹ä»¶
             string name = this.txtExcelName.Text.ToString();
             if (string.IsNullOrEmpty(name))
             {
@@ -892,10 +890,10 @@ namespace WF.DBF
         {
             if (tabControl1.SelectedIndex == 4)
             {
-                tabPage5.Text = "½éÉÜ";
+                tabPage5.Text = "ä»‹ç»";
                 tabPage5.Controls.Clear();
                 string introducePath = @"Resources\md\Introduce.md";
-                // ½â¾öÖĞÎÄÂÒÂëÎÊÌâ
+                // è§£å†³ä¸­æ–‡ä¹±ç é—®é¢˜
                 System.Text.Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
                 string mdHtml = Markdown.ToHtml(File.ReadAllText(introducePath, Encoding.GetEncoding("GB2312")));
                 WebBrowser webBrowser = new WebBrowser();
@@ -943,7 +941,7 @@ namespace WF.DBF
         {
             IDataObject dataObject = Clipboard.GetDataObject();
             bool hasExcel = dataObject != null && (dataObject.GetDataPresent(DataFormats.CommaSeparatedValue) || dataObject.GetDataPresent(DataFormats.Text));
-            string excelText = hasExcel ? "ÊÇ" : "·ñ";
+            string excelText = hasExcel ? "æ˜¯" : "å¦";
 
             List<List<string>> data = new List<List<string>>();
             if (hasExcel)
@@ -961,7 +959,7 @@ namespace WF.DBF
                 }
             }
 
-            txtClipboardText.Text = "ÊÇ·ñ´æÔÚExcelÄÚÈİ: " + excelText + Newtonsoft.Json.JsonConvert.SerializeObject(data);
+            txtClipboardText.Text = "æ˜¯å¦å­˜åœ¨Excelå†…å®¹: " + excelText + Newtonsoft.Json.JsonConvert.SerializeObject(data);
 
         }
     }
